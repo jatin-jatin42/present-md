@@ -52,11 +52,25 @@ def main():
 )
 def convert(input_path, template_path, output_path, min_slides, max_slides):
     """Convert a Markdown file to a PPTX presentation."""
-    # Validate API key
-    api_key = os.environ.get("OPENAI_API_KEY")
-    if not api_key or api_key == "your-openai-api-key-here":
-        click.echo("Error: OPENAI_API_KEY is not set. Please set it in .env or environment.", err=True)
-        sys.exit(1)
+    # Handle LLM Provider
+    provider = os.environ.get("LLM_PROVIDER", "openai").lower()
+    
+    if provider == "groq":
+        api_key = os.environ.get("GROQ_API_KEY")
+        if not api_key:
+            click.echo("Error: GROQ_API_KEY is not set. Please set it in .env or environment.", err=True)
+            sys.exit(1)
+        # Point the OpenAI client to Groq
+        os.environ["OPENAI_API_KEY"] = api_key
+        os.environ["OPENAI_BASE_URL"] = "https://api.groq.com/openai/v1"
+        model = os.environ.get("LLM_MODEL", "llama3-70b-8192")
+    else:
+        # Validate API key
+        api_key = os.environ.get("OPENAI_API_KEY")
+        if not api_key or api_key == "your-openai-api-key-here":
+            click.echo("Error: OPENAI_API_KEY is not set. Please set it in .env or environment.", err=True)
+            sys.exit(1)
+        model = os.environ.get("OPENAI_MODEL", "gpt-4o")
 
     # Generate default output path if not provided
     if output_path is None:
@@ -73,7 +87,7 @@ def convert(input_path, template_path, output_path, min_slides, max_slides):
     try:
         pipeline = PresentationPipeline(
             api_key=api_key,
-            model=os.environ.get("OPENAI_MODEL", "gpt-4o"),
+            model=model,
             min_slides=min_slides,
             max_slides=max_slides,
         )

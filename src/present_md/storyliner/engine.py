@@ -136,7 +136,7 @@ class Storyliner:
                     {"role": "user", "content": user_prompt},
                 ],
                 temperature=0.3,
-                max_tokens=4096,
+                max_tokens=2048,
                 response_format={"type": "json_object"},
             )
             raw_output = response.choices[0].message.content
@@ -150,10 +150,10 @@ class Storyliner:
         """Create a summary of all sections for the LLM prompt."""
         parts = []
         for i, section in enumerate(document.sections):
-            # Truncate long sections to keep prompt manageable
+            # Truncate long sections to keep prompt manageable and fit into AP rate limits
             text = section.full_text
-            if len(text) > 2000:
-                text = text[:2000] + "... [truncated]"
+            if len(text) > 500:
+                text = text[:500] + "... [truncated]"
 
             content_types = []
             for block in section.content:

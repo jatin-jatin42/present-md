@@ -150,7 +150,7 @@ class VisualDecisionEngine:
                 {"role": "user", "content": f"Decide visual types for these slides:\n\n{slides_description}"},
             ],
             temperature=0.2,
-            max_tokens=4096,
+            max_tokens=2048,
             response_format={"type": "json_object"},
         )
         raw = response.choices[0].message.content
