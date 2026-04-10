@@ -1,0 +1,12 @@
+services:
+  present-md:
+    build: .
+    container_name: present-md
+    volumes:
+      - ./input:/app/input
+      - ./output:/app/output
+      - ./src:/app/src
+    env_file:
+      - .env
+    environment:
+      - PYTHONPATH=/app/src
