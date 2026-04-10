@@ -1,0 +1,12 @@
+# 1. Accenture Tech Acquisition Analysis (Small/Fast)
+PYTHONPATH=src python3 -m present_md convert -i "Guidelines/Sample Files/Accenture Tech Acquisition Analysis/Accenture Tech Acquisition Analysis.md" -t "Guidelines/Sample Files/Accenture Tech Acquisition Analysis/Template_Accenture Tech Acquisition Analysis.pptx" -o output/Accenture.pptx
+
+# 2. UAE Progress toward 2050 Solar Energy Targets (Medium)
+PYTHONPATH=src python3 -m present_md convert -i "Guidelines/Sample Files/UAE Progress toward 2050 Solar Energy Targets_20250729_120637/UAE Progress toward 2050 Solar Energy Targets_20250729_120637.md" -t "Guidelines/Sample Files/UAE Progress toward 2050 Solar Energy Targets_20250729_120637/Template_UAE Progress toward 2050 Solar Energy Targets_20250729_120637.pptx" -o output/UAE_Solar.pptx
+
+# 3. AI Bubble: Detection, Prevention, and Investment Strategies (Large)
+PYTHONPATH=src python3 -m present_md convert -i "Guidelines/Sample Files/AI Bubble_ Detection, Prevention, and Investment Strategies/AI Bubble_ Detection, Prevention, and Investment Strategies.md" -t "Guidelines/Sample Files/AI Bubble_ Detection, Prevention, and Investment Strategies/Template_AI Bubble_ Detection, Prevention, and Investment Strategies.pptx" -o output/AIBubble.pptx
+
+# 4. Batch Test Script Validation (Tests the 24 documents inside Guidelines/Test Cases for crashing checks)
+# *Make sure to run this from the "present-md" root directory*
+PYTHONPATH=src python3 tests/test_pipeline.py

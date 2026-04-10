@@ -1,7 +1,12 @@
 """Integration tests for the present-md pipeline."""
 
 import os
+import sys
 import glob
+
+# Add src to Python path so IDEs and scripts can find present_md
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
+
 from present_md.pipeline import PresentationPipeline
 
 

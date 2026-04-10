@@ -56,16 +56,26 @@ class PresentationBuilder:
         for layout in self.prs.slide_layouts:
             if "blank" in layout.name.lower():
                 return layout
-        # Fallback to last layout (usually blank-ish)
         return self.prs.slide_layouts[-1]
 
     def _get_title_layout(self):
         """Get a title slide layout."""
         for layout in self.prs.slide_layouts:
             name = layout.name.lower()
-            if "title" in name and ("slide" in name or "layout" in name):
+            if "cover" in name or "title slide" in name or "title" in name:
                 return layout
-        # Fallback to first layout
+        return self.prs.slide_layouts[0]
+
+    def _get_title_only_layout(self):
+        """Get a layout with a title and blank content."""
+        for layout in self.prs.slide_layouts:
+            name = layout.name.lower()
+            # Known patterns for "Title Only"
+            if "title only" in name or "divider" in name or "header" in name:
+                return layout
+        # Fallback to the second layout, which is typically standard/title-only
+        if len(self.prs.slide_layouts) > 1:
+            return self.prs.slide_layouts[1]
         return self.prs.slide_layouts[0]
 
     def _build_slide(self, plan: SlidePlan):
@@ -74,85 +84,72 @@ class PresentationBuilder:
             self._build_title_slide(plan)
         elif plan.slide_type == "agenda":
             self._build_agenda_slide(plan)
-        elif plan.slide_type == "executive_summary":
-            self._build_content_slide(plan)
-        elif plan.slide_type == "conclusion":
-            self._build_content_slide(plan)
         else:
             self._build_content_slide(plan)
 
     def _build_title_slide(self, plan: SlidePlan):
-        """Build the title slide."""
+        """Build the title slide utilizing Master placeholders."""
         layout = self._get_title_layout()
         slide = self.prs.slides.add_slide(layout)
 
-        # Clear default placeholders
-        for shape in list(slide.placeholders):
-            sp = shape._element
-            sp.getparent().remove(sp)
+        # Fill Title Placeholder explicitly
+        if slide.shapes.title:
+            slide.shapes.title.text = plan.title
+        else:
+            # Fallback manual title drawing if the template is broken
+            title_rect = Rect(self.grid.title_rect.left, Inches(2.5), self.grid.title_rect.width, Inches(1.5))
+            self._add_text_box(slide, title_rect, plan.title, font_size=Pt(36), font_bold=True, alignment=PP_ALIGN.CENTER)
 
-        # Title
-        title_rect = self.grid.title_rect
-        title_rect = Rect(
-            title_rect.left, Inches(2.5),
-            title_rect.width, Inches(1.5),
-        )
-        self._add_text_box(
-            slide, title_rect,
-            plan.title,
-            font_size=Pt(36),
-            font_bold=True,
-            font_color=self.theme.colors[0] if self.theme.colors else RGBColor(0, 0, 0),
-            font_name=self.theme.title_font,
-            alignment=PP_ALIGN.CENTER,
-        )
-
-        # Subtitle / key message
+        # Fill Subtitle Placeholder (usually idx=1) explicitly
         if plan.key_message:
-            sub_rect = Rect(
-                title_rect.left, title_rect.bottom + Inches(0.3),
-                title_rect.width, Inches(0.8),
-            )
-            self._add_text_box(
-                slide, sub_rect,
-                plan.key_message,
-                font_size=Pt(18),
-                font_color=self.theme.colors[2] if len(self.theme.colors) > 2 else RGBColor(0x66, 0x66, 0x66),
-                font_name=self.theme.body_font,
-                alignment=PP_ALIGN.CENTER,
-            )
+            subtitle_shape = None
+            for ph in slide.placeholders:
+                if ph.placeholder_format.idx == 1 or "subtitle" in ph.name.lower():
+                    subtitle_shape = ph
+                    break
+            if not subtitle_shape and len(slide.placeholders) > 1:
+                subtitle_shape = list(slide.placeholders)[1]
+                
+            if subtitle_shape:
+                subtitle_shape.text = plan.key_message
+            else:
+                # Fallback manual subtitle
+                sub_rect = Rect(self.grid.title_rect.left, Inches(4.3), self.grid.title_rect.width, Inches(0.8))
+                self._add_text_box(slide, sub_rect, plan.key_message, font_size=Pt(18), alignment=PP_ALIGN.CENTER)
 
     def _build_agenda_slide(self, plan: SlidePlan):
         """Build the agenda/TOC slide."""
-        slide = self.prs.slides.add_slide(self._get_blank_layout())
+        slide = self.prs.slides.add_slide(self._get_title_only_layout())
 
-        # Clear placeholders
-        for shape in list(slide.placeholders):
-            sp = shape._element
-            sp.getparent().remove(sp)
-
-        # Title
-        self._add_slide_title(slide, plan.title)
+        # Bind to existing Title
+        if slide.shapes.title:
+            slide.shapes.title.text = plan.title
+        else:
+            self._add_slide_title(slide, plan.title)
 
         # Agenda items
         items = plan.elements[0].content.get("items", plan.key_message.split(",")) if plan.elements else []
         if not items:
-            items = [plan.key_message] if plan.key_message else ["Overview"]
+            items = ["Overview"]
 
         content_rect = self.grid.content_rect
         self._add_bullet_list(slide, content_rect, items)
 
     def _build_content_slide(self, plan: SlidePlan):
-        """Build a content slide based on its visual type."""
-        slide = self.prs.slides.add_slide(self._get_blank_layout())
+        """Build a content slide preserving Master layout."""
+        slide = self.prs.slides.add_slide(self._get_title_only_layout())
 
-        # Clear placeholders
-        for shape in list(slide.placeholders):
-            sp = shape._element
-            sp.getparent().remove(sp)
-
-        # Always add title
-        self._add_slide_title(slide, plan.title)
+        # Bind to existing Title
+        if slide.shapes.title:
+            slide.shapes.title.text = plan.title
+            
+            # Find and clear any remaining default body placeholders avoiding ghosts
+            for ph in slide.placeholders:
+                if ph.placeholder_format.idx != 0: # 0 is Title
+                    sp = ph._element
+                    sp.getparent().remove(sp)
+        else:
+            self._add_slide_title(slide, plan.title)
 
         # Add key message subtitle if present
         if plan.key_message and plan.visual_type not in ("key_message_box",):

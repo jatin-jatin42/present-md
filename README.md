@@ -23,36 +23,32 @@ The pipeline is designed with a strict component-based architecture:
 
 ## 💻 Setup & Installation
 
-### Option 1: Docker (Recommended)
-You only need Docker installed.
+### Option 1: Docker (Requires Docker installed)
 ```bash
-# 1. Set your OpenAI API key
+# 1. Set your Groq API key
 cp .env.example .env
-nano .env  # Add your OPENAI_API_KEY
+nano .env  # Add your GROQ_API_KEY
+# If using Docker v2+, you might use `docker compose` instead of `docker-compose`
 
-# 2. Add input files
-cp my_report.md input/
-cp my_theme.pptx input/
-
-# 3. Build & Convert (Drop into the container)
-docker-compose run present-md convert -i input/my_report.md -t input/my_theme.pptx -o output/final.pptx
+# 2. Build & Convert (Drop into the container)
+docker compose run present-md convert -i "Guidelines/Sample Files/Accenture Tech Acquisition Analysis/Accenture Tech Acquisition Analysis.md" -t "Guidelines/Sample Files/Accenture Tech Acquisition Analysis/Template_Accenture Tech Acquisition Analysis.pptx" -o output/final.pptx
 ```
 
-### Option 2: Local Python Environment
+### Option 2: Local Python Environment (macOS/Linux)
 ```bash
-# 1. Provide Python 3.11+ and create a virtual env
+# 1. Provide Python 3.9+ and create a virtual env
 python3 -m venv venv
 source venv/bin/activate
 
 # 2. Install Dependencies
-pip install -r requirements.txt
+python3 -m pip install -r requirements.txt
 
 # 3. Copy the env file
 cp .env.example .env
-# Edit .env to add OPENAI_API_KEY
+# Edit .env to add GROQ_API_KEY
 
-# 4. Run the Tool
-python -m present_md convert -i path/to/input.md -t path/to/template.pptx -o path/to/output.pptx
+# 4. Run the Tool (Using an actual provided test file)
+PYTHONPATH=src python3 -m present_md convert -i "Guidelines/Sample Files/Accenture Tech Acquisition Analysis/Accenture Tech Acquisition Analysis.md" -t "Guidelines/Sample Files/Accenture Tech Acquisition Analysis/Template_Accenture Tech Acquisition Analysis.pptx" -o output/Accenture.pptx
 ```
 
 ---

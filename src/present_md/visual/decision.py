@@ -185,9 +185,12 @@ class VisualDecisionEngine:
         if llm_visual_type:
             plan.visual_type = llm_visual_type
             for elem in llm_elements:
+                content = elem.get("content", {})
+                if not isinstance(content, dict):
+                    content = {"items": [str(content)]}
                 plan.elements.append(VisualElement(
                     element_type=elem.get("element_type", "text"),
-                    content=elem.get("content", {}),
+                    content=content,
                 ))
         else:
             # Fallback visual decision
