@@ -87,77 +87,102 @@ class PresentationBuilder:
         else:
             self._build_content_slide(plan)
 
+    def _purge_all_placeholders(self, slide):
+        """Remove ALL unfilled placeholders from a slide to prevent 'Double-click to edit' ghosts."""
+        for ph in list(slide.placeholders):
+            sp = ph._element
+            sp.getparent().remove(sp)
+
     def _build_title_slide(self, plan: SlidePlan):
-        """Build the title slide utilizing Master placeholders."""
+        """Build the title slide utilizing Cover Master layout placeholders."""
         layout = self._get_title_layout()
         slide = self.prs.slides.add_slide(layout)
 
-        # Fill Title Placeholder explicitly
-        if slide.shapes.title:
-            slide.shapes.title.text = plan.title
-        else:
-            # Fallback manual title drawing if the template is broken
-            title_rect = Rect(self.grid.title_rect.left, Inches(2.5), self.grid.title_rect.width, Inches(1.5))
-            self._add_text_box(slide, title_rect, plan.title, font_size=Pt(36), font_bold=True, alignment=PP_ALIGN.CENTER)
+        # Try to fill native title placeholder
+        title_ph = slide.shapes.title
+        subtitle_ph = None
+        for ph in slide.placeholders:
+            if ph.placeholder_format.idx == 1:
+                subtitle_ph = ph
+                break
 
-        # Fill Subtitle Placeholder (usually idx=1) explicitly
-        if plan.key_message:
-            subtitle_shape = None
-            for ph in slide.placeholders:
-                if ph.placeholder_format.idx == 1 or "subtitle" in ph.name.lower():
-                    subtitle_shape = ph
-                    break
-            if not subtitle_shape and len(slide.placeholders) > 1:
-                subtitle_shape = list(slide.placeholders)[1]
-                
-            if subtitle_shape:
-                subtitle_shape.text = plan.key_message
-            else:
-                # Fallback manual subtitle
-                sub_rect = Rect(self.grid.title_rect.left, Inches(4.3), self.grid.title_rect.width, Inches(0.8))
+        if title_ph:
+            title_ph.text = plan.title
+            if subtitle_ph and plan.key_message:
+                subtitle_ph.text = plan.key_message
+            # Remove any remaining unfilled placeholders (idx >= 2)
+            for ph in list(slide.placeholders):
+                if ph.placeholder_format.idx > 1:
+                    ph._element.getparent().remove(ph._element)
+        else:
+            # Template has no native title shape - draw everything manually
+            self._purge_all_placeholders(slide)
+            title_rect = Rect(self.grid.title_rect.left, Inches(2.5), self.grid.title_rect.width, Inches(1.8))
+            self._add_text_box(slide, title_rect, plan.title, font_size=Pt(40), font_bold=True, alignment=PP_ALIGN.CENTER)
+            if plan.key_message:
+                sub_rect = Rect(self.grid.title_rect.left, Inches(4.5), self.grid.title_rect.width, Inches(0.8))
                 self._add_text_box(slide, sub_rect, plan.key_message, font_size=Pt(18), alignment=PP_ALIGN.CENTER)
 
     def _build_agenda_slide(self, plan: SlidePlan):
-        """Build the agenda/TOC slide."""
+        """Build the agenda/TOC slide with clean placeholders."""
         slide = self.prs.slides.add_slide(self._get_title_only_layout())
 
-        # Bind to existing Title
-        if slide.shapes.title:
-            slide.shapes.title.text = plan.title
+        # Populate title, then strip ALL other placeholders
+        title_ph = slide.shapes.title
+        if title_ph:
+            title_ph.text = plan.title
+            # Remove ALL non-title placeholders
+            for ph in list(slide.placeholders):
+                if ph.placeholder_format.idx != 0:
+                    ph._element.getparent().remove(ph._element)
         else:
+            # No native title - purge everything, draw manually
+            self._purge_all_placeholders(slide)
             self._add_slide_title(slide, plan.title)
 
-        # Agenda items
-        items = plan.elements[0].content.get("items", plan.key_message.split(",")) if plan.elements else []
+        # Draw agenda items in cleared content area
+        items = []
+        if plan.elements and isinstance(plan.elements[0].content, dict):
+            items = plan.elements[0].content.get("items", [])
+        if not items and plan.key_message:
+            items = [s.strip() for s in plan.key_message.split(",") if s.strip()]
         if not items:
             items = ["Overview"]
 
-        content_rect = self.grid.content_rect
-        self._add_bullet_list(slide, content_rect, items)
+        self._add_bullet_list(slide, self.grid.content_rect, items)
 
     def _build_content_slide(self, plan: SlidePlan):
-        """Build a content slide preserving Master layout."""
+        """Build a content slide with clean layout - no ghost placeholders."""
         slide = self.prs.slides.add_slide(self._get_title_only_layout())
 
-        # Bind to existing Title
-        if slide.shapes.title:
-            slide.shapes.title.text = plan.title
-            
-            # Find and clear any remaining default body placeholders avoiding ghosts
-            for ph in slide.placeholders:
-                if ph.placeholder_format.idx != 0: # 0 is Title
-                    sp = ph._element
-                    sp.getparent().remove(sp)
+        # Populate title, then PURGE ALL other placeholders immediately
+        title_ph = slide.shapes.title
+        if title_ph:
+            title_ph.text = plan.title
+            # Remove ALL non-title placeholders
+            for ph in list(slide.placeholders):
+                if ph.placeholder_format.idx != 0:
+                    ph._element.getparent().remove(ph._element)
         else:
+            # No native title - purge everything, draw manually
+            self._purge_all_placeholders(slide)
             self._add_slide_title(slide, plan.title)
 
-        # Add key message subtitle if present
-        if plan.key_message and plan.visual_type not in ("key_message_box",):
+        # Add key message subtitle only when there are no actual bullet elements to show
+        # (prevents double-text: key_message appears in the italic subtitle AND as a bullet)
+        has_real_content = any(
+            isinstance(e.content, dict) and (
+                e.content.get("items") or e.content.get("stats") or
+                e.content.get("headers") or e.content.get("steps") or
+                e.content.get("title")
+            )
+            for e in plan.elements
+        )
+        if plan.key_message and plan.visual_type != "key_message_box" and not has_real_content:
             self._add_key_message(slide, plan.key_message)
 
-        # Render based on visual type
+        # Dispatch visual rendering
         visual_type = plan.visual_type
-
         if visual_type == "stat_callout":
             self._render_stat_callout(slide, plan)
         elif visual_type == "icon_grid":
@@ -173,15 +198,12 @@ class PresentationBuilder:
         elif visual_type == "timeline":
             self._render_timeline(slide, plan)
         else:
-            # Default: bullet list
             self._render_bullet_list(slide, plan)
 
     def _build_fallback_slide(self, plan: SlidePlan):
-        """Build a simple fallback slide."""
+        """Build a simple text-only fallback slide (no layout dependencies)."""
         slide = self.prs.slides.add_slide(self._get_blank_layout())
-        for shape in list(slide.placeholders):
-            sp = shape._element
-            sp.getparent().remove(sp)
+        self._purge_all_placeholders(slide)
         self._add_slide_title(slide, plan.title)
         if plan.key_message:
             self._add_key_message(slide, plan.key_message)

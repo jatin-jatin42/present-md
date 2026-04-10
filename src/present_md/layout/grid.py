@@ -19,30 +19,32 @@ SLIDE_WIDTH = Inches(10)
 SLIDE_HEIGHT = Inches(7.5)
 
 # Margins
-MARGIN_LEFT = Inches(0.6)
-MARGIN_RIGHT = Inches(0.6)
-MARGIN_TOP = Inches(0.5)
-MARGIN_BOTTOM = Inches(0.4)
+MARGIN_LEFT = Inches(0.5)
+MARGIN_RIGHT = Inches(0.5)
+MARGIN_TOP = Inches(0.4)
+MARGIN_BOTTOM = Inches(0.3)
 
-# Content area
-CONTENT_LEFT = MARGIN_LEFT
-CONTENT_TOP = Inches(1.5)  # Below title area
-CONTENT_WIDTH = SLIDE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT
-CONTENT_HEIGHT = SLIDE_HEIGHT - CONTENT_TOP - MARGIN_BOTTOM
-
-# Title area
+# Title area (very top of slide)
 TITLE_LEFT = MARGIN_LEFT
 TITLE_TOP = MARGIN_TOP
-TITLE_WIDTH = SLIDE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT
-TITLE_HEIGHT = Inches(0.8)
+TITLE_WIDTH = Inches(10) - MARGIN_LEFT - MARGIN_RIGHT
+TITLE_HEIGHT = Inches(0.75)
 
-# Subtitle / key message area
-SUBTITLE_TOP = TITLE_TOP + TITLE_HEIGHT
-SUBTITLE_HEIGHT = Inches(0.4)
+# Subtitle / key message area (immediately below title)
+SUBTITLE_TOP = TITLE_TOP + TITLE_HEIGHT + Inches(0.05)
+SUBTITLE_HEIGHT = Inches(0.35)
+
+# Content area: starts right below the subtitle, available until ~4.2" from top
+# We cap at 4.2" to stay ABOVE the decorative overlay panel most templates use.
+CONTENT_LEFT = MARGIN_LEFT
+CONTENT_TOP = SUBTITLE_TOP + SUBTITLE_HEIGHT + Inches(0.1)
+CONTENT_WIDTH = Inches(10) - MARGIN_LEFT - MARGIN_RIGHT
+CONTENT_HEIGHT = Inches(4.2) - CONTENT_TOP   # Use top portion only
 
 # Standard spacing
-ELEMENT_GAP = Inches(0.2)  # Gap between elements
-INNER_PADDING = Inches(0.15)  # Padding inside containers
+ELEMENT_GAP = Inches(0.2)
+INNER_PADDING = Inches(0.15)
+
 
 
 @dataclass

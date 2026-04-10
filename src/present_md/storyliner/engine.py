@@ -42,59 +42,31 @@ class SlideOutline:
 
 # ─── Engine ─────────────────────────────────────────────────────────────────────
 
-SYSTEM_PROMPT = """You are an expert presentation designer and content strategist. 
-Your job is to transform a long-form markdown report into a concise, compelling 
-slide presentation outline.
+SYSTEM_PROMPT = """You are a presentation designer. Convert a markdown report into a slide outline.
 
 RULES:
-1. Create exactly {min_slides} to {max_slides} slides.
-2. Each slide must have exactly ONE key message.
-3. Follow this mandatory flow:
-   - Slide 1: Title slide (title + subtitle)
-   - Slide 2: Agenda / Table of Contents (list the main topics)
-   - Slide 3: Executive Summary (key findings in 3-5 bullet points)
-   - Slides 4 to N-1: Section content (one key insight per slide)
-   - Slide N: Conclusion / Key Takeaways
-4. Keep bullet points to maximum 4-5 per slide, each under 15 words.
-5. Identify any tables/numerical data that should become charts.
-6. Do NOT include every detail — synthesize and prioritize.
-7. Never lose a MAJOR insight or finding from the report.
+1. Output exactly {min_slides}-{max_slides} slides.
+2. Mandatory flow: Slide 1=title, Slide 2=agenda, Slide 3=executive_summary, Slides 4..N-1=content, Slide N=conclusion.
+3. One key_message per slide. Max 5 bullet_points, each under 12 words.
+4. Mark has_numeric_data=true if the section has numbers/percentages. Mark has_table_data=true if a table exists.
+5. Synthesize — do not copy raw text.
 
-OUTPUT FORMAT — respond with ONLY valid JSON:
-{{
-  "document_title": "...",
-  "document_subtitle": "...",
-  "slides": [
-    {{
-      "slide_number": 1,
-      "slide_type": "title",
-      "title": "...",
-      "key_message": "...",
-      "bullet_points": [],
-      "notes": "Any visual/layout notes",
-      "source_sections": ["Section name(s) this draws from"],
-      "has_table_data": false,
-      "has_numeric_data": false,
-      "table_data": null
-    }}
-  ]
-}}
+Return ONLY valid JSON:
+{{"document_title":"...","document_subtitle":"...","slides":[{{"slide_number":1,"slide_type":"title","title":"...","key_message":"...","bullet_points":[],"notes":"","source_sections":[],"has_table_data":false,"has_numeric_data":false,"table_data":null}}]}}
 """
 
-USER_PROMPT_TEMPLATE = """Here is the markdown report to convert into a presentation outline:
+USER_PROMPT_TEMPLATE = """Convert this report into a {min_slides}-{max_slides} slide deck.
 
-DOCUMENT TITLE: {title}
-DOCUMENT SUBTITLE: {subtitle}
+TITLE: {title}
+SUBTITLE: {subtitle}
+IMAGES: {image_count}
 
-SECTIONS:
+SECTION OUTLINES:
 {sections_summary}
 
-TABLES FOUND:
-{tables_summary}
+TABLES:
+{tables_summary}"""
 
-NUMBER OF IMAGES: {image_count}
-
-Please create a presentation outline with {min_slides}-{max_slides} slides."""
 
 
 class Storyliner:
@@ -147,15 +119,12 @@ class Storyliner:
             return self._fallback_outline(document)
 
     def _summarize_sections(self, document: Document) -> str:
-        """Create a summary of all sections for the LLM prompt."""
+        """Create a compact, token-efficient summary of sections for the LLM."""
         parts = []
         for i, section in enumerate(document.sections):
-            # Truncate long sections to keep prompt manageable and fit into AP rate limits
-            text = section.full_text
-            if len(text) > 500:
-                text = text[:500] + "... [truncated]"
-
+            # Only send title + content types — not raw text body
             content_types = []
+            has_nums = False
             for block in section.content:
                 if block.type == "table":
                     content_types.append("TABLE")
@@ -165,13 +134,17 @@ class Storyliner:
                     content_types.append("LIST")
                 else:
                     content_types.append("TEXT")
+                # Quick heuristic: does full_text contain digits/percent?
+                if any(c.isdigit() for c in section.full_text[:200]):
+                    has_nums = True
 
             parts.append(
-                f"--- Section {i+1} (Level {section.level}): {section.title} ---\n"
-                f"Content types: {', '.join(content_types) or 'TEXT'}\n"
-                f"{text}\n"
+                f"[{i+1}] H{section.level}: {section.title} | "
+                f"{', '.join(content_types) or 'TEXT'}"
+                + (" | HAS_NUMBERS" if has_nums else "")
             )
         return "\n".join(parts)
+
 
     def _summarize_tables(self, document: Document) -> str:
         """Create a summary of tables for the LLM prompt."""
