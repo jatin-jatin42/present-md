@@ -91,6 +91,12 @@ def convert(input_path, template_path, output_path, min_slides, max_slides):
             min_slides=min_slides,
             max_slides=max_slides,
         )
+        
+        # Ensure the output directory exists
+        out_dir = os.path.dirname(output_path)
+        if out_dir:
+            os.makedirs(out_dir, exist_ok=True)
+            
         pipeline.run(input_path, template_path, output_path)
         click.echo(f"\n✅ Presentation saved to: {output_path}")
     except Exception as e:

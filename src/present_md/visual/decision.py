@@ -125,7 +125,7 @@ class VisualDecisionEngine:
                 # Find matching table from document
                 for table in document.tables:
                     if table.title and any(
-                        table.title.lower() in s.lower()
+                        str(table.title).lower() in str(s).lower()
                         for s in slide.source_sections
                     ):
                         table_info = f" | Table: {table.title} ({len(table.rows)} rows)"
